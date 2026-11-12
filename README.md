@@ -2,7 +2,7 @@
 
 - **vs Computer** (Easy / Medium / Hard – Hard is unbeatable) or **2 Players**
 - Unity Ads: **Banner** (bottom), **Interstitial** (every 3 finished rounds), **Rewarded** (Hint button)
-- Solid app icon + splash generated from `assets/` (re-create with `npm run icons`)
+- Custom app icon and splash assets stored in `assets/`.
 - GitHub Actions builds an **APK** (Android) and an **IPA** (iOS)
 
 ## Unity Ads setup
