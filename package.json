@@ -1,20 +1,24 @@
 {
   "name": "tictactoe-app",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "private": true,
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "icons": "python3 scripts/make_icons.py"
   },
   "dependencies": {
     "@capacitor/android": "^6.1.2",
     "@capacitor/core": "^6.1.2",
+    "@capacitor/ios": "^6.1.2",
+    "capacitor-unity-ads": "file:./plugins/capacitor-unity-ads",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
   },
   "devDependencies": {
+    "@capacitor/assets": "^3.0.5",
     "@capacitor/cli": "^6.1.2",
     "@vitejs/plugin-react": "^4.3.1",
     "vite": "^5.4.2"

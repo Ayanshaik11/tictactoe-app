@@ -1,0 +1,149 @@
+name: Build Android APK + iOS IPA
+
+on:
+  push:
+    branches: [main, master]
+  workflow_dispatch:
+
+env:
+  # Optional: set these under Settings > Secrets and variables > Actions > Variables
+  VITE_UNITY_ANDROID_GAME_ID: ${{ vars.UNITY_ANDROID_GAME_ID }}
+  VITE_UNITY_IOS_GAME_ID: ${{ vars.UNITY_IOS_GAME_ID }}
+  VITE_UNITY_TEST_MODE: ${{ vars.UNITY_TEST_MODE || 'true' }}
+
+jobs:
+  android:
+    name: Android APK
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build web app
+        run: npm run build
+
+      - name: Add Android platform
+        run: npx cap add android
+
+      - name: Generate icons and splash
+        run: npx capacitor-assets generate --android
+
+      - name: Sync
+        run: npx cap sync android
+
+      - name: Build debug APK
+        working-directory: android
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleDebug
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: tictactoe-android-apk
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+
+  ios:
+    name: iOS IPA
+    runs-on: macos-14
+    env:
+      # Signing is optional. Without these secrets an UNSIGNED .ipa is produced.
+      HAS_SIGNING: ${{ secrets.IOS_CERT_P12_BASE64 != '' && secrets.IOS_PROFILE_BASE64 != '' }}
+      TEAM_ID: ${{ secrets.IOS_TEAM_ID }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build web app
+        run: npm run build
+
+      - name: Add iOS platform
+        run: npx cap add ios
+
+      - name: Generate icons and splash
+        run: npx capacitor-assets generate --ios
+
+      - name: Sync (installs CocoaPods incl. UnityAds)
+        run: npx cap sync ios
+
+      # ---------- Unsigned IPA (default) ----------
+      - name: Build unsigned IPA
+        if: env.HAS_SIGNING != 'true'
+        run: |
+          xcodebuild -workspace ios/App/App.xcworkspace -scheme App \
+            -configuration Release -sdk iphoneos \
+            -archivePath $RUNNER_TEMP/App.xcarchive archive \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY=""
+          mkdir -p Payload
+          cp -R $RUNNER_TEMP/App.xcarchive/Products/Applications/App.app Payload/
+          zip -qr tictactoe-unsigned.ipa Payload
+
+      # ---------- Signed IPA (when secrets exist) ----------
+      - name: Import certificate and profile
+        if: env.HAS_SIGNING == 'true'
+        env:
+          P12: ${{ secrets.IOS_CERT_P12_BASE64 }}
+          P12_PASSWORD: ${{ secrets.IOS_CERT_PASSWORD }}
+          PROFILE: ${{ secrets.IOS_PROFILE_BASE64 }}
+        run: |
+          KC=$RUNNER_TEMP/build.keychain-db
+          security create-keychain -p tmp "$KC"
+          security set-keychain-settings -lut 21600 "$KC"
+          security unlock-keychain -p tmp "$KC"
+          echo "$P12" | base64 --decode > $RUNNER_TEMP/cert.p12
+          security import $RUNNER_TEMP/cert.p12 -P "$P12_PASSWORD" -A -t cert -f pkcs12 -k "$KC"
+          security set-key-partition-list -S apple-tool:,apple: -k tmp "$KC"
+          security list-keychain -d user -s "$KC"
+          mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
+          echo "$PROFILE" | base64 --decode > $RUNNER_TEMP/profile.mobileprovision
+          UUID=$(grep -a -A1 UUID $RUNNER_TEMP/profile.mobileprovision | grep -o '[-A-Z0-9]\{36\}' | head -1)
+          NAME=$(/usr/libexec/PlistBuddy -c 'Print :Name' /dev/stdin <<< "$(security cms -D -i $RUNNER_TEMP/profile.mobileprovision)")
+          cp $RUNNER_TEMP/profile.mobileprovision ~/Library/MobileDevice/Provisioning\ Profiles/$UUID.mobileprovision
+          echo "PROFILE_NAME=$NAME" >> $GITHUB_ENV
+
+      - name: Build signed IPA
+        if: env.HAS_SIGNING == 'true'
+        run: |
+          BUNDLE_ID=$(node -p "require('./capacitor.config.json').appId")
+          xcodebuild -workspace ios/App/App.xcworkspace -scheme App \
+            -configuration Release -sdk iphoneos \
+            -archivePath $RUNNER_TEMP/App.xcarchive archive \
+            DEVELOPMENT_TEAM="$TEAM_ID" CODE_SIGN_STYLE=Manual \
+            CODE_SIGN_IDENTITY="Apple Distribution" PROVISIONING_PROFILE_SPECIFIER="$PROFILE_NAME"
+          cat > $RUNNER_TEMP/export.plist <<PLIST
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0"><dict>
+            <key>method</key><string>${EXPORT_METHOD:-app-store}</string>
+            <key>teamID</key><string>$TEAM_ID</string>
+            <key>signingStyle</key><string>manual</string>
+            <key>provisioningProfiles</key><dict><key>$BUNDLE_ID</key><string>$PROFILE_NAME</string></dict>
+          </dict></plist>
+          PLIST
+          xcodebuild -exportArchive -archivePath $RUNNER_TEMP/App.xcarchive \
+            -exportOptionsPlist $RUNNER_TEMP/export.plist -exportPath $RUNNER_TEMP/out
+          cp $RUNNER_TEMP/out/*.ipa tictactoe-signed.ipa
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: tictactoe-ios-ipa
+          path: |
+            tictactoe-unsigned.ipa
+            tictactoe-signed.ipa
+          if-no-files-found: error
