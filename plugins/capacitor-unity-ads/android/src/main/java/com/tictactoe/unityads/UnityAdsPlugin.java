@@ -1,6 +1,8 @@
 package com.tictactoe.unityads;
 
 import android.app.Activity;
+import android.view.Gravity;
+import android.widget.FrameLayout;
 
 import com.getcapacitor.JSObject;
 import com.getcapacitor.Plugin;
@@ -12,9 +14,14 @@ import com.unity3d.ads.UnityAds;
 import com.unity3d.ads.IUnityAdsInitializationListener;
 import com.unity3d.ads.IUnityAdsLoadListener;
 import com.unity3d.ads.IUnityAdsShowListener;
+import com.unity3d.services.banners.BannerView;
+import com.unity3d.services.banners.BannerErrorInfo;
+import com.unity3d.services.banners.UnityBannerSize;
 
 @CapacitorPlugin(name = "UnityAds")
 public class UnityAdsPlugin extends Plugin {
+
+    private BannerView bannerView;
 
     @PluginMethod
     public void initialize(PluginCall call) {
@@ -51,7 +58,7 @@ public class UnityAdsPlugin extends Plugin {
     public void loadAd(PluginCall call) {
         String placementId = call.getString("placementId");
 
-        if (placementId == null) {
+        if (placementId == null || placementId.isEmpty()) {
             call.reject("Placement ID is missing");
             return;
         }
@@ -77,7 +84,7 @@ public class UnityAdsPlugin extends Plugin {
     public void showAd(PluginCall call) {
         String placementId = call.getString("placementId");
 
-        if (placementId == null) {
+        if (placementId == null || placementId.isEmpty()) {
             call.reject("Placement ID is missing");
             return;
         }
@@ -117,11 +124,83 @@ public class UnityAdsPlugin extends Plugin {
 
     @PluginMethod
     public void showBanner(PluginCall call) {
-        call.resolve();
+        String placementId = call.getString("placementId");
+
+        if (placementId == null || placementId.isEmpty()) {
+            call.reject("Banner placement ID is missing");
+            return;
+        }
+
+        int width = call.getInt("width", 320);
+        int height = call.getInt("height", 50);
+
+        Activity activity = getActivity();
+
+        activity.runOnUiThread(() -> {
+            try {
+                if (bannerView != null) {
+                    bannerView.destroy();
+                    bannerView = null;
+                }
+
+                BannerView newBanner = new BannerView(
+                    activity,
+                    placementId,
+                    new UnityBannerSize(width, height)
+                );
+
+                newBanner.setListener(new BannerView.IListener() {
+                    @Override
+                    public void onBannerLoaded(BannerView view) {
+                        activity.runOnUiThread(() -> {
+                            FrameLayout.LayoutParams params =
+                                new FrameLayout.LayoutParams(
+                                    width,
+                                    height,
+                                    Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL
+                                );
+
+                            activity.addContentView(view, params);
+                            bannerView = view;
+                            call.resolve();
+                        });
+                    }
+
+                    @Override
+                    public void onBannerFailedToLoad(
+                        BannerView view,
+                        BannerErrorInfo errorInfo
+                    ) {
+                        view.destroy();
+                        call.reject("Banner load failed: " + errorInfo.errorMessage);
+                    }
+
+                    @Override
+                    public void onBannerShown(BannerView view) {}
+
+                    @Override
+                    public void onBannerClick(BannerView view) {}
+
+                    @Override
+                    public void onBannerLeftApplication(BannerView view) {}
+                });
+
+                newBanner.load();
+
+            } catch (Exception e) {
+                call.reject("Banner error: " + e.getMessage());
+            }
+        });
     }
 
     @PluginMethod
     public void hideBanner(PluginCall call) {
-        call.resolve();
+        getActivity().runOnUiThread(() -> {
+            if (bannerView != null) {
+                bannerView.destroy();
+                bannerView = null;
+            }
+            call.resolve();
+        });
     }
 }

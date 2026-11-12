@@ -1,15 +1,13 @@
-// Unity Ads settings. Replace the Game IDs with the ones from the Unity Dashboard
-// (or set them as GitHub repository variables, see README).
-// Placement IDs below are Unity's defaults; change them if you renamed yours.
+// Unity Ads configuration
 const env = import.meta.env;
 
 export const UNITY = {
   testMode: (env.VITE_UNITY_TEST_MODE ?? 'true') !== 'false',
   android: {
-    gameId: env.VITE_UNITY_ANDROID_GAME_ID || '1234567',
-    banner: 'Banner_Android',
-    interstitial: 'Interstitial_Android',
-    rewarded: 'Rewarded_Android',
+    gameId: env.VITE_UNITY_ANDROID_GAME_ID || '800436253',
+    banner: 'BP_Banner_Android',
+    interstitial: 'BP_Interstitial_Android',
+    rewarded: 'BP_Rewarded_Android',
   },
   ios: {
     gameId: env.VITE_UNITY_IOS_GAME_ID || '7654321',
@@ -19,5 +17,4 @@ export const UNITY = {
   },
 };
 
-// Show an interstitial every N finished rounds.
 export const INTERSTITIAL_EVERY = 3;
