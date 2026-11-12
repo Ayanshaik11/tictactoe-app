@@ -30,9 +30,19 @@ jobs:
         run: npm run build
 
       - name: Add Android platform
+        run: npx cap add android
+
+      - name: Generate custom icons
+        run: npx capacitor-assets generate --android
+
+      - name: Verify launcher icons
         run: |
-          if [ ! -d android ]; then npx cap add android; fi
-          npx cap sync android
+          echo "Checking generated Android launcher icons..."
+          find android/app/src/main/res -type f -name 'ic_launcher*' -print
+          test -n "$(find android/app/src/main/res -type f -name 'ic_launcher.png' -o -name 'ic_launcher_foreground.png')"
+
+      - name: Sync
+        run: npx cap sync android
 
       - name: Build debug APK
         working-directory: android
