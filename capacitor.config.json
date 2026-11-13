@@ -1,7 +1,9 @@
 {
-  "appId": "com.shaik.tictactoe",
+  "appId": "com.shaik.kingtictactoe",
   "appName": "Tic Tac Toe",
   "webDir": "dist",
   "backgroundColor": "#12141c",
-  "ios": { "contentInset": "never" }
+  "ios": {
+    "contentInset": "never"
+  }
 }
