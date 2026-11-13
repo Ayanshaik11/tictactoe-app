@@ -193,18 +193,8 @@ export default function App() {
         </div>
       </main>
 
-      {/* Banner ad lives here. Native Unity banner overlays this slot. */}
-      <div className={`ad-slot ${isNative ? 'native' : ''}`}>
-        {!isNative && <span>Banner ad · test</span>}
-      </div>
-
       {toast && <div className="toast" role="status">{toast}</div>}
-      {fake && (
-        <FakeAd
-          kind={fake.kind}
-          onDone={(r) => { fake.resolve(r); setFake(null); }}
-        />
-      )}
+
     </div>
   );
 }
