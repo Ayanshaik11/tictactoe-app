@@ -1,16 +1,10 @@
-import {
-  AdMob,
-  AdmobConsentStatus,
-  BannerAdSize,
-  BannerAdPosition,
-} from '@capacitor-community/admob';
+import { AdMob, AdmobConsentStatus } from '@capacitor-community/admob';
 import { Capacitor } from '@capacitor/core';
 import { ADMOB } from './adsConfig';
 
 const native = Capacitor.isNativePlatform();
 let initialized = false;
 let initializing = null;
-let bannerShown = false;
 
 const options = (adId) => ({
   adId,
@@ -36,15 +30,6 @@ export async function initAds() {
 
       await AdMob.initialize();
       initialized = true;
-
-      await AdMob.showBanner({
-        ...options(ADMOB.banner),
-        adSize: BannerAdSize.ADAPTIVE_BANNER,
-        position: BannerAdPosition.BOTTOM_CENTER,
-        margin: 0,
-      });
-      bannerShown = true;
-
       prepareInterstitial();
       prepareRewarded();
     } catch (error) {
