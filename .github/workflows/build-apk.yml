@@ -3,16 +3,6 @@ name: Build Android APK
 on:
   workflow_dispatch:
 
-env:
-  VITE_UNITY_ANDROID_GAME_ID: ${{ vars.UNITY_ANDROID_GAME_ID }}
-  VITE_UNITY_ANDROID_BANNER: ${{ vars.UNITY_ANDROID_BANNER }}
-  VITE_UNITY_ANDROID_INTERSTITIAL: ${{ vars.UNITY_ANDROID_INTERSTITIAL }}
-  VITE_UNITY_ANDROID_REWARDED: ${{ vars.UNITY_ANDROID_REWARDED }}
-  VITE_UNITY_IOS_GAME_ID: ${{ vars.UNITY_IOS_GAME_ID }}
-  VITE_UNITY_IOS_BANNER: ${{ vars.UNITY_IOS_BANNER }}
-  VITE_UNITY_IOS_INTERSTITIAL: ${{ vars.UNITY_IOS_INTERSTITIAL }}
-  VITE_UNITY_IOS_REWARDED: ${{ vars.UNITY_IOS_REWARDED }}
-  VITE_UNITY_TEST_MODE: ${{ vars.UNITY_TEST_MODE || 'true' }}
 
 jobs:
   build:
@@ -41,24 +31,8 @@ jobs:
       - name: Add Android platform
         run: npx cap add android
 
-      - name: Register Unity Ads plugin
-        run: |
-          cat > android/app/src/main/java/com/shaik/tictactoe/MainActivity.java <<'EOF'
-          package com.shaik.tictactoe;
-
-          import android.os.Bundle;
-          import com.getcapacitor.BridgeActivity;
-          import com.tictactoe.unityads.UnityAdsPlugin;
-
-          public class MainActivity extends BridgeActivity {
-              @Override
-              public void onCreate(Bundle savedInstanceState) {
-                  registerPlugin(UnityAdsPlugin.class);
-                  super.onCreate(savedInstanceState);
-              }
-          }
-          EOF
-
+      - name: Configure AdMob App ID
+        run: sed -i '/<application>/a\        <meta-data android:name="com.google.android.gms.ads.APPLICATION_ID" android:value="ca-app-pub-6567537003608637~5084517623" />' android/app/src/main/AndroidManifest.xml
 
       - name: Generate custom icons
         run: npx capacitor-assets generate --android

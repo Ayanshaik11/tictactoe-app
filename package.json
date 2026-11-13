@@ -9,10 +9,10 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@capacitor-community/admob": "^6.2.0",
     "@capacitor/android": "^6.1.2",
     "@capacitor/core": "^6.1.2",
     "@capacitor/ios": "^6.1.2",
-    "capacitor-unity-ads": "file:./plugins/capacitor-unity-ads",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
   },

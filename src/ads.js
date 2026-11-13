@@ -1,127 +1,102 @@
-import { Capacitor, registerPlugin } from '@capacitor/core';
-import { UNITY } from './adsConfig';
+import {
+  AdMob,
+  AdmobConsentStatus,
+  BannerAdSize,
+  BannerAdPosition,
+} from '@capacitor-community/admob';
+import { Capacitor } from '@capacitor/core';
+import { ADMOB } from './adsConfig';
 
-const UnityAds = registerPlugin('UnityAds');
-const platform = Capacitor.getPlatform();
-export const isNative = Capacitor.isNativePlatform();
-const cfg = UNITY[platform];
-
-const ready = { interstitial: false, rewarded: false };
-let simulator = null;
+const native = Capacitor.isNativePlatform();
 let initialized = false;
-let initializing = false;
+let initializing = null;
+let bannerShown = false;
 
-export const bannerHeight = () => window.innerWidth >= 728 ? 90 : 50;
-export const bannerWidth = () => window.innerWidth >= 728 ? 728 : 320;
-
-function logError(action, error, placementId = '') {
-  console.error(`[UnityAds] ${action} failed`, {
-    platform,
-    gameId: cfg?.gameId,
-    placementId,
-    testMode: UNITY.testMode,
-    error,
-  });
-}
-
-export function setAdSimulator(fn) {
-  simulator = fn;
-}
-
-async function preload(kind) {
-  if (!isNative) {
-    ready[kind] = true;
-    return;
-  }
-
-  try {
-    await UnityAds.loadAd({ placementId: cfg[kind] });
-    ready[kind] = true;
-    console.log(`[UnityAds] ${kind} loaded: ${cfg[kind]}`);
-  } catch (e) {
-    ready[kind] = false;
-    logError(`${kind} load`, e, cfg[kind]);
-    setTimeout(() => preload(kind), 15000);
-  }
-}
-
-async function loadBanner() {
-  try {
-    await UnityAds.showBanner({
-      placementId: cfg.banner,
-      width: bannerWidth(),
-      height: bannerHeight(),
-    });
-    console.log(`[UnityAds] Banner requested: ${cfg.banner}`);
-  } catch (e) {
-    logError('Banner load', e, cfg.banner);
-    setTimeout(loadBanner, 15000);
-  }
-}
+const options = (adId) => ({
+  adId,
+  isTesting: ADMOB.testing,
+});
 
 export async function initAds() {
-  document.documentElement.style.setProperty('--ad-h', `${bannerHeight()}px`);
+  if (!native || initialized) return;
+  if (initializing) return initializing;
 
-  if (!isNative) {
-    ready.interstitial = ready.rewarded = true;
-    return;
-  }
+  initializing = (async () => {
+    try {
+      let consent = await AdMob.requestConsentInfo();
 
-  if (initialized || initializing) return;
-  initializing = true;
+      if (
+        consent.isConsentFormAvailable &&
+        consent.status === AdmobConsentStatus.REQUIRED
+      ) {
+        consent = await AdMob.showConsentForm();
+      }
 
+      if (!consent.canRequestAds) return;
+
+      await AdMob.initialize();
+      initialized = true;
+
+      await AdMob.showBanner({
+        ...options(ADMOB.banner),
+        adSize: BannerAdSize.ADAPTIVE_BANNER,
+        position: BannerAdPosition.BOTTOM_CENTER,
+        margin: 0,
+      });
+      bannerShown = true;
+
+      prepareInterstitial();
+      prepareRewarded();
+    } catch (error) {
+      console.error('[AdMob] Initialization:', error);
+    } finally {
+      initializing = null;
+    }
+  })();
+
+  return initializing;
+}
+
+export async function prepareInterstitial() {
+  if (!native || !initialized) return;
   try {
-    console.log('[UnityAds] Initializing', {
-      platform,
-      gameId: cfg.gameId,
-      banner: cfg.banner,
-      interstitial: cfg.interstitial,
-      rewarded: cfg.rewarded,
-      testMode: UNITY.testMode,
-    });
-
-    await UnityAds.initialize({
-      gameId: cfg.gameId,
-      testMode: UNITY.testMode,
-    });
-
-    initialized = true;
-    console.log('[UnityAds] Initialization successful');
-
-    loadBanner();
-    preload('interstitial');
-    preload('rewarded');
-  } catch (e) {
-    logError('Initialization', e);
-    setTimeout(initAds, 15000);
-  } finally {
-    initializing = false;
+    await AdMob.prepareInterstitial(options(ADMOB.interstitial));
+  } catch (error) {
+    console.error('[AdMob] Interstitial load:', error);
   }
 }
 
-async function show(kind) {
-  if (!isNative) {
-    return simulator ? simulator(kind) : 'completed';
-  }
-
-  if (!ready[kind]) {
-    preload(kind);
-    console.warn(`[UnityAds] ${kind} not ready`);
-    return 'unavailable';
-  }
-
-  ready[kind] = false;
-
+export async function showInterstitial() {
+  if (!native || !initialized) return 'unavailable';
   try {
-    const r = await UnityAds.showAd({ placementId: cfg[kind] });
-    return r && r.completed ? 'completed' : 'skipped';
-  } catch (e) {
-    logError(`${kind} show`, e, cfg[kind]);
+    await AdMob.showInterstitial();
+    prepareInterstitial();
+    return 'completed';
+  } catch (error) {
+    console.error('[AdMob] Interstitial show:', error);
+    prepareInterstitial();
     return 'unavailable';
-  } finally {
-    preload(kind);
   }
 }
 
-export const showInterstitial = () => show('interstitial');
-export const showRewarded = () => show('rewarded');
+export async function prepareRewarded() {
+  if (!native || !initialized) return;
+  try {
+    await AdMob.prepareRewardVideoAd(options(ADMOB.rewarded));
+  } catch (error) {
+    console.error('[AdMob] Rewarded load:', error);
+  }
+}
+
+export async function showRewarded() {
+  if (!native || !initialized) return 'unavailable';
+  try {
+    const reward = await AdMob.showRewardVideoAd();
+    prepareRewarded();
+    return reward ? 'completed' : 'skipped';
+  } catch (error) {
+    console.error('[AdMob] Rewarded show:', error);
+    prepareRewarded();
+    return 'unavailable';
+  }
+}

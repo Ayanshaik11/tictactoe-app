@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { bestMoves, computerMove, getWinner } from './ai';
 import {
-  initAds, isNative, setAdSimulator, showInterstitial, showRewarded,
+  initAds, showInterstitial, showRewarded,
 } from './ads';
 import { INTERSTITIAL_EVERY } from './adsConfig';
 
@@ -14,36 +14,6 @@ function save(key, value) {
   try { localStorage.setItem(key, value); } catch { /* ignore */ }
 }
 
-/** Browser-only stand-in for full screen ads, so the design can be previewed. */
-function FakeAd({ kind, onDone }) {
-  const [left, setLeft] = useState(3);
-  useEffect(() => {
-    if (left <= 0) return undefined;
-    const t = setTimeout(() => setLeft(left - 1), 1000);
-    return () => clearTimeout(t);
-  }, [left]);
-  const rewarded = kind === 'rewarded';
-  return (
-    <div className="fake-ad" role="dialog" aria-modal="true">
-      <div className="fake-card">
-        <small>{rewarded ? 'Rewarded video' : 'Interstitial'} · test ad</small>
-        <h2>Unity Ads</h2>
-        <p>{rewarded ? 'Watch to the end to earn your hint.' : 'Full-screen ad between rounds.'}</p>
-        {left > 0 ? (
-          <div className="btn" aria-live="polite">Ad ends in {left}s</div>
-        ) : (
-          <button className="btn primary" onClick={() => onDone('completed')}>
-            {rewarded ? 'Claim reward' : 'Close'}
-          </button>
-        )}
-        {rewarded && left > 0 && (
-          <button className="link" onClick={() => onDone('skipped')}>Skip (no reward)</button>
-        )}
-      </div>
-    </div>
-  );
-}
-
 export default function App() {
   const [mode, setMode] = useState(() => load('ttt-mode', 'cpu'));       // 'cpu' | 'pvp'
   const [level, setLevel] = useState(() => load('ttt-level', 'medium')); // easy | medium | hard
@@ -54,7 +24,6 @@ export default function App() {
   const [hint, setHint] = useState(null);
   const [toast, setToast] = useState('');
   const [adBusy, setAdBusy] = useState(false);
-  const [fake, setFake] = useState(null);       // browser-only fake ad
   const finished = useRef(0);                   // rounds finished
   const lastAd = useRef(0);
 
@@ -64,7 +33,6 @@ export default function App() {
   const cpuTurn = mode === 'cpu' && turn === 'O' && !gameOver;
 
   useEffect(() => {
-    setAdSimulator((kind) => new Promise((resolve) => setFake({ kind, resolve })));
     initAds();
   }, []);
 
