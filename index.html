@@ -1,17 +1,344 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta
-      name="viewport"
-      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"
-    />
-    <meta name="theme-color" content="#12141c" />
-    <link rel="icon" type="image/png" href="/favicon.png" />
-    <title>Tic Tac Toe</title>
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.jsx"></script>
-  </body>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Tic Tac Toe – Play vs Friend or Computer</title>
+<meta name="description" content="Play free Tic Tac Toe online. Two players on one screen, or take on the computer at three difficulty levels.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#e9f3f1;--surface:#ffffff;--ink:#12303a;--muted:#4d6a72;--line:#b9d3cf;
+  --x:#c2410c;--o:#0369a1;--accent:#0f766e;--accent-ink:#ffffff;--win:#fde68a;
+  --ad-bg:#dcebe8;--ad-line:#8fb4ae;
+  box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --bg:#0c1f26;--surface:#12303a;--ink:#e8f4f1;--muted:#9bbcc2;--line:#27505b;
+    --x:#fdba74;--o:#7dd3fc;--accent:#5eead4;--accent-ink:#06302b;--win:#5b4b12;
+    --ad-bg:#0f2a33;--ad-line:#33636f;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#0c1f26;--surface:#12303a;--ink:#e8f4f1;--muted:#9bbcc2;--line:#27505b;
+  --x:#fdba74;--o:#7dd3fc;--accent:#5eead4;--accent-ink:#06302b;--win:#5b4b12;
+  --ad-bg:#0f2a33;--ad-line:#33636f;
+}
+*,*::before,*::after{box-sizing:inherit}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"Bricolage Grotesque",system-ui,-apple-system,"Segoe UI",Arial,sans-serif;line-height:1.55;padding-bottom:60px}
+@media(min-width:760px){body{padding-bottom:0}}
+.wrap{max-width:1180px;margin:0 auto;padding:0 16px}
+header{display:flex;align-items:center;justify-content:space-between;padding:14px 0}
+.logo{font-weight:800;font-size:1.35rem;letter-spacing:-.02em}
+.logo b{color:var(--x)}.logo i{color:var(--o);font-style:normal}
+nav a{color:var(--muted);text-decoration:none;margin-left:16px;font-weight:600}
+nav a:hover,nav a:focus-visible{color:var(--ink);text-decoration:underline}
+
+/* ---- Ad slots: fixed sizes so pages never jump when ads load ---- */
+.ad{background:var(--ad-bg);border:1px dashed var(--ad-line);color:var(--muted);display:flex;align-items:center;justify-content:center;text-align:center;font-size:.8rem;margin:0 auto;max-width:100%;overflow:hidden}
+.ad-label{display:block;font-size:.7rem;color:var(--muted);text-align:center;margin:10px 0 3px}
+.ad-728x90{width:728px;height:90px}
+.ad-970x90{width:970px;height:90px}
+.ad-300x250{width:300px;height:250px}
+.ad-300x600{width:300px;height:600px}
+.ad-320x50{width:320px;height:50px}
+.ad-320x100{width:320px;height:100px}
+.only-wide{display:none}.only-narrow{display:block}
+@media(min-width:760px){.only-wide{display:block}.only-narrow{display:none}}
+.sticky-ad{position:fixed;left:0;right:0;bottom:0;z-index:20;background:var(--bg);padding:4px 0 calc(4px + env(safe-area-inset-bottom,0px));border-top:1px solid var(--line)}
+@media(min-width:760px){.sticky-ad{display:none}}
+
+/* ---- Layout ---- */
+.layout{display:grid;grid-template-columns:1fr;gap:24px;margin-top:8px}
+@media(min-width:1000px){.layout{grid-template-columns:1fr 300px}}
+.rail{display:flex;flex-direction:column;gap:18px;align-items:center}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:20px}
+h1{font-size:clamp(1.7rem,4vw,2.5rem);line-height:1.1;margin:0 0 6px;letter-spacing:-.03em;font-weight:800}
+h2{font-size:1.25rem;margin:0 0 8px;letter-spacing:-.01em}
+.sub{color:var(--muted);margin:0 0 16px}
+
+/* ---- Controls ---- */
+.opts{display:grid;gap:10px;margin-bottom:16px}
+.row{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.row>span{min-width:84px;color:var(--muted);font-weight:600;font-size:.9rem}
+.seg{display:inline-flex;border:1.5px solid var(--line);border-radius:12px;overflow:hidden}
+.seg button{font:inherit;font-weight:600;padding:8px 14px;border:0;background:transparent;color:var(--ink);cursor:pointer}
+.seg button+button{border-left:1.5px solid var(--line)}
+.seg button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink)}
+button:focus-visible{outline:3px solid var(--o);outline-offset:2px}
+.names{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.names input{font:inherit;padding:8px 10px;border-radius:10px;border:1.5px solid var(--line);background:var(--bg);color:var(--ink);width:100%}
+
+/* ---- Scoreboard ---- */
+.score{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:14px;text-align:center}
+.score div{border:1.5px solid var(--line);border-radius:12px;padding:8px 4px}
+.score div.on{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent) inset}
+.score small{display:block;color:var(--muted);font-size:.8rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.score strong{font-size:1.6rem;line-height:1.2}
+.sx strong{color:var(--x)}.so strong{color:var(--o)}
+
+/* ---- Board ---- */
+.status{min-height:1.7em;text-align:center;font-weight:800;font-size:1.2rem;margin:4px 0 12px}
+.board{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;width:min(100%,420px);margin:0 auto}
+.cell{aspect-ratio:1;border:0;border-radius:16px;background:var(--bg);font:inherit;font-weight:800;font-size:clamp(2.6rem,12vw,4.4rem);line-height:1;cursor:pointer;color:var(--ink);transition:transform .12s,background .12s}
+.cell:not(:disabled):hover{transform:scale(1.04);background:var(--line)}
+.cell:disabled{cursor:default}
+.cell.x{color:var(--x)}.cell.o{color:var(--o)}
+.cell.win{background:var(--win)}
+.cell.pop{animation:pop .18s ease-out}
+@keyframes pop{from{transform:scale(.6)}to{transform:scale(1)}}
+.actions{display:flex;gap:10px;justify-content:center;margin-top:16px;flex-wrap:wrap}
+.btn{font:inherit;font-weight:700;padding:10px 18px;border-radius:12px;border:1.5px solid var(--accent);background:var(--accent);color:var(--accent-ink);cursor:pointer}
+.btn.ghost{background:transparent;color:var(--ink);border-color:var(--line)}
+@media(prefers-reduced-motion:reduce){.cell,.cell.pop{transition:none;animation:none}}
+
+/* ---- Content ---- */
+.content{margin:28px 0;display:grid;gap:18px}
+@media(min-width:760px){.content{grid-template-columns:1fr 1fr}}
+.content p,.content li{max-width:68ch}
+.content ul{padding-left:20px;margin:0}
+details{border-top:1px solid var(--line);padding:10px 0}
+summary{cursor:pointer;font-weight:600}
+footer{border-top:1px solid var(--line);margin-top:20px;padding:18px 0 28px;color:var(--muted);font-size:.9rem;text-align:center}
+footer a{color:var(--muted)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="logo"><b>Tic</b> <i>Tac</i> Toe</div>
+    <nav><a href="#how">How to play</a><a href="#faq">FAQ</a></nav>
+  </header>
+
+  <!-- AD SLOT 1: Top banner. Desktop 728x90 / mobile 320x100. Paste ad code inside the .ad div. -->
+  <div class="only-wide"><span class="ad-label">Advertisement</span><div class="ad ad-728x90" id="ad-top-leaderboard">Ad slot 728×90</div></div>
+  <div class="only-narrow"><span class="ad-label">Advertisement</span><div class="ad ad-320x100" id="ad-top-mobile">Ad slot 320×100</div></div>
+
+  <main class="layout">
+    <section>
+      <div class="card">
+        <h1>Play Tic Tac Toe</h1>
+        <p class="sub">Two players on one screen, or play the computer.</p>
+
+        <div class="opts">
+          <div class="row"><span>Mode</span>
+            <div class="seg" id="modeSeg">
+              <button data-mode="pvp" aria-pressed="false">Player vs player</button>
+              <button data-mode="cpu" aria-pressed="true">Player vs computer</button>
+            </div>
+          </div>
+          <div class="row" id="diffRow"><span>Difficulty</span>
+            <div class="seg" id="diffSeg">
+              <button data-d="easy" aria-pressed="false">Easy</button>
+              <button data-d="medium" aria-pressed="true">Medium</button>
+              <button data-d="hard" aria-pressed="false">Unbeatable</button>
+            </div>
+          </div>
+          <div class="row" id="sideRow"><span>You play</span>
+            <div class="seg" id="sideSeg">
+              <button data-s="X" aria-pressed="true">X (first)</button>
+              <button data-s="O" aria-pressed="false">O (second)</button>
+            </div>
+          </div>
+          <div class="names" id="nameRow" hidden>
+            <input id="nameX" maxlength="12" placeholder="Player X name" aria-label="Player X name">
+            <input id="nameO" maxlength="12" placeholder="Player O name" aria-label="Player O name">
+          </div>
+        </div>
+
+        <div class="score" aria-live="polite">
+          <div class="sx" id="boxX"><small id="lblX">You (X)</small><strong id="sX">0</strong></div>
+          <div id="boxD"><small>Draws</small><strong id="sD">0</strong></div>
+          <div class="so" id="boxO"><small id="lblO">Computer (O)</small><strong id="sO">0</strong></div>
+        </div>
+
+        <div class="status" id="status" role="status" aria-live="polite"></div>
+        <div class="board" id="board" role="grid" aria-label="Tic Tac Toe board"></div>
+
+        <div class="actions">
+          <button class="btn" id="again">New round</button>
+          <button class="btn ghost" id="reset">Reset scores</button>
+        </div>
+      </div>
+
+      <!-- AD SLOT 2: In-content rectangle, shown below the game on all screens. -->
+      <span class="ad-label">Advertisement</span>
+      <div class="ad ad-300x250" id="ad-incontent">Ad slot 300×250</div>
+
+      <div class="content">
+        <div class="card" id="how">
+          <h2>How to play</h2>
+          <ul>
+            <li>Players take turns placing X or O on a 3×3 grid.</li>
+            <li>Get three of your marks in a row, column or diagonal to win.</li>
+            <li>If all nine squares fill with no line, the round is a draw.</li>
+            <li>The player who goes first alternates each round.</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h2>Computer levels</h2>
+          <ul>
+            <li><b>Easy:</b> picks squares at random. Good for beginners.</li>
+            <li><b>Medium:</b> plays well, but slips up now and then.</li>
+            <li><b>Unbeatable:</b> never misses. Your best result is a draw.</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="card" id="faq">
+        <h2>Questions</h2>
+        <details><summary>Who should go first?</summary><p>X always moves first. Taking the center or a corner on your first move gives the best chances.</p></details>
+        <details><summary>Can the second player win?</summary><p>Yes, if the first player makes a mistake. With perfect play from both sides, every game ends in a draw.</p></details>
+        <details><summary>Do scores save?</summary><p>Scores last until you close or reload the page, or press Reset scores.</p></details>
+      </div>
+    </section>
+
+    <aside class="rail" aria-label="Advertisements">
+      <!-- AD SLOT 3: Sidebar rectangle (desktop) -->
+      <div><span class="ad-label">Advertisement</span><div class="ad ad-300x250" id="ad-side-1">Ad slot 300×250</div></div>
+      <!-- AD SLOT 4: Sidebar skyscraper (desktop). Remove if you only want one sidebar ad. -->
+      <div class="only-wide"><span class="ad-label">Advertisement</span><div class="ad ad-300x600" id="ad-side-2">Ad slot 300×600</div></div>
+    </aside>
+  </main>
+
+  <!-- AD SLOT 5: Bottom banner -->
+  <div class="only-wide"><span class="ad-label">Advertisement</span><div class="ad ad-728x90" id="ad-bottom">Ad slot 728×90</div></div>
+
+  <footer>© 2026 Tic Tac Toe · <a href="#">Privacy</a> · <a href="#">Terms</a> · <a href="#">Contact</a></footer>
+</div>
+
+<!-- AD SLOT 6: Mobile sticky footer, 320x50 -->
+<div class="sticky-ad"><div class="ad ad-320x50" id="ad-sticky">Ad slot 320×50</div></div>
+
+<script>
+(function(){
+  var LINES=[[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
+  var $=function(id){return document.getElementById(id)};
+  var S={mode:'cpu',diff:'medium',human:'X',board:Array(9).fill(''),turn:'X',over:false,
+         first:'X',score:{X:0,O:0,D:0},busy:false};
+  var boardEl=$('board'),cells=[];
+  for(var i=0;i<9;i++){
+    var b=document.createElement('button');
+    b.className='cell';b.setAttribute('role','gridcell');
+    b.setAttribute('aria-label','Square '+(i+1)+', empty');
+    (function(i){b.addEventListener('click',function(){play(i)})})(i);
+    boardEl.appendChild(b);cells.push(b);
+  }
+
+  function winner(bd){
+    for(var k=0;k<LINES.length;k++){var l=LINES[k];
+      if(bd[l[0]]&&bd[l[0]]===bd[l[1]]&&bd[l[1]]===bd[l[2]])return{p:bd[l[0]],line:l};}
+    return null;
+  }
+  function empties(bd){var r=[];for(var i=0;i<9;i++)if(!bd[i])r.push(i);return r}
+
+  function minimax(bd,p,me,depth){
+    var w=winner(bd);
+    if(w)return w.p===me?10-depth:depth-10;
+    var e=empties(bd);if(!e.length)return 0;
+    var best=p===me?-99:99;
+    for(var k=0;k<e.length;k++){
+      bd[e[k]]=p;
+      var v=minimax(bd,p==='X'?'O':'X',me,depth+1);
+      bd[e[k]]='';
+      if(p===me){if(v>best)best=v}else{if(v<best)best=v}
+    }
+    return best;
+  }
+  function bestMove(me){
+    var e=empties(S.board),best=-99,moves=[];
+    for(var k=0;k<e.length;k++){
+      S.board[e[k]]=me;
+      var v=minimax(S.board,me==='X'?'O':'X',me,1);
+      S.board[e[k]]='';
+      if(v>best){best=v;moves=[e[k]]}else if(v===best)moves.push(e[k]);
+    }
+    return moves[Math.floor(Math.random()*moves.length)];
+  }
+  function cpuMove(){
+    var me=S.human==='X'?'O':'X',e=empties(S.board);
+    var smart=S.diff==='hard'||(S.diff==='medium'&&Math.random()<0.65);
+    return smart?bestMove(me):e[Math.floor(Math.random()*e.length)];
+  }
+
+  function name(p){
+    if(S.mode==='pvp')return ($('name'+p).value.trim())||('Player '+p);
+    return p===S.human?'You':'Computer';
+  }
+  function labels(){
+    $('lblX').textContent=name('X')+' (X)';
+    $('lblO').textContent=name('O')+' (O)';
+  }
+  function render(win){
+    for(var i=0;i<9;i++){
+      var c=cells[i],v=S.board[i];
+      c.textContent=v;c.className='cell'+(v?' '+v.toLowerCase():'')+(win&&win.line.indexOf(i)>-1?' win':'');
+      c.disabled=!!v||S.over||S.busy;
+      c.setAttribute('aria-label','Square '+(i+1)+', '+(v||'empty'));
+    }
+    $('sX').textContent=S.score.X;$('sO').textContent=S.score.O;$('sD').textContent=S.score.D;
+    $('boxX').classList.toggle('on',!S.over&&S.turn==='X');
+    $('boxO').classList.toggle('on',!S.over&&S.turn==='O');
+    labels();
+  }
+  function say(t){$('status').textContent=t}
+
+  function play(i){
+    if(S.over||S.board[i]||S.busy)return;
+    S.board[i]=S.turn;
+    cells[i].classList.add('pop');
+    var w=winner(S.board);
+    if(w){S.over=true;S.score[w.p]++;render(w);
+      say(S.mode==='cpu'?(w.p===S.human?'You win!':'Computer wins.'):name(w.p)+' wins!');return}
+    if(!empties(S.board).length){S.over=true;S.score.D++;render();say('It’s a draw.');return}
+    S.turn=S.turn==='X'?'O':'X';
+    render();
+    turnMsg();
+    if(S.mode==='cpu'&&S.turn!==S.human){
+      S.busy=true;render();
+      setTimeout(function(){S.busy=false;if(!S.over)play(cpuMove())},450);
+    }
+  }
+  function turnMsg(){
+    say(S.mode==='cpu'?(S.turn===S.human?'Your turn':'Computer is thinking…'):name(S.turn)+'’s turn ('+S.turn+')');
+  }
+  function newRound(keepFirst){
+    if(!keepFirst)S.first=S.first==='X'?'O':'X';
+    S.board=Array(9).fill('');S.over=false;S.busy=false;S.turn=S.first;
+    render();turnMsg();
+    if(S.mode==='cpu'&&S.turn!==S.human){
+      S.busy=true;render();
+      setTimeout(function(){S.busy=false;play(cpuMove())},450);
+    }
+  }
+  function fullRestart(){
+    S.score={X:0,O:0,D:0};S.first='X';newRound(true);
+  }
+  function setPressed(seg,attr,val){
+    [].forEach.call($(seg).children,function(b){b.setAttribute('aria-pressed',b.dataset[attr]===val)});
+  }
+  function syncUI(){
+    var cpu=S.mode==='cpu';
+    $('diffRow').hidden=!cpu;$('sideRow').hidden=!cpu;$('nameRow').hidden=cpu;
+  }
+  $('modeSeg').addEventListener('click',function(e){var m=e.target.dataset.mode;if(!m)return;
+    S.mode=m;setPressed('modeSeg','mode',m);syncUI();fullRestart()});
+  $('diffSeg').addEventListener('click',function(e){var d=e.target.dataset.d;if(!d)return;
+    S.diff=d;setPressed('diffSeg','d',d);fullRestart()});
+  $('sideSeg').addEventListener('click',function(e){var s=e.target.dataset.s;if(!s)return;
+    S.human=s;setPressed('sideSeg','s',s);fullRestart()});
+  $('nameX').addEventListener('input',function(){labels();if(!S.over)turnMsg()});
+  $('nameO').addEventListener('input',function(){labels();if(!S.over)turnMsg()});
+  $('again').addEventListener('click',function(){newRound(false)});
+  $('reset').addEventListener('click',fullRestart);
+
+  syncUI();newRound(true);
+})();
+</script>
+</body>
 </html>
