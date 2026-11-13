@@ -31,14 +31,29 @@ jobs:
       - name: Add Android platform
         run: npx cap add android
 
-      - name: Configure AdMob App ID
-        run: sed -i '/<application[ >]/a\        <meta-data android:name="com.google.android.gms.ads.APPLICATION_ID" android:value="ca-app-pub-6567537003608637~5084517623" />' android/app/src/main/AndroidManifest.xml
-
       - name: Generate icons and splash
         run: npx capacitor-assets generate --android
 
       - name: Sync
         run: npx cap sync android
+      - name: Inject and verify AdMob App ID
+        run: |
+          python - <<'PYTHON'
+          from pathlib import Path
+          import re
+          p = Path("android/app/src/main/AndroidManifest.xml")
+          s = p.read_text()
+          key = 'com.google.android.gms.ads.APPLICATION_ID'
+          s = re.sub(r'<meta-data\\b(?=[^>]*android:name=["\\']' + re.escape(key) + r'["\\'])[^>]*/>\\s*', '', s)
+          m = re.search(r'<application\\b[^>]*>', s)
+          if not m:
+              raise SystemExit("ERROR: application tag not found")
+          tag = '\\n        <meta-data android:name="' + key + '" android:value="ca-app-pub-6567537003608637~5084517623" />'
+          s = s[:m.end()] + tag + s[m.end():]
+          p.write_text(s)
+          assert s.count(key) == 1 and 'ca-app-pub-6567537003608637~5084517623' in s
+          print("AdMob App ID successfully inserted and verified.")
+          PYTHON
 
       - name: Build debug APK
         working-directory: android
