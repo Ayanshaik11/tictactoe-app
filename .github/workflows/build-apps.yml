@@ -32,7 +32,7 @@ jobs:
         run: npx cap add android
 
       - name: Configure AdMob App ID
-        run: sed -i '/<application>/a\        <meta-data android:name="com.google.android.gms.ads.APPLICATION_ID" android:value="ca-app-pub-6567537003608637~5084517623" />' android/app/src/main/AndroidManifest.xml
+        run: sed -i '/<application[ >]/a\        <meta-data android:name="com.google.android.gms.ads.APPLICATION_ID" android:value="ca-app-pub-6567537003608637~5084517623" />' android/app/src/main/AndroidManifest.xml
 
       - name: Generate icons and splash
         run: npx capacitor-assets generate --android
@@ -73,9 +73,6 @@ jobs:
 
       - name: Add iOS platform
         run: npx cap add ios
-
-      - name: Configure AdMob App ID
-        run: sed -i '/<application>/a\        <meta-data android:name="com.google.android.gms.ads.APPLICATION_ID" android:value="ca-app-pub-6567537003608637~5084517623" />' android/app/src/main/AndroidManifest.xml
 
       - name: Configure iOS AdMob App ID
         run: /usr/libexec/PlistBuddy -c 'Add :GADApplicationIdentifier string ca-app-pub-6567537003608637~5084517623' ios/App/App/Info.plist
