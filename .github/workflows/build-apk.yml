@@ -44,10 +44,7 @@ jobs:
         run: npx cap sync android
       - name: Inject and verify AdMob App ID
         run: |
-          MANIFEST=android/app/src/main/AndroidManifest.xml
-          grep -q 'com.google.android.gms.ads.APPLICATION_ID' "$MANIFEST" || sed -i '/<application/i\' "$MANIFEST"
-          sed -i '/<application/a\        <meta-data android:name="com.google.android.gms.ads.APPLICATION_ID" android:value="ca-app-pub-6567537003608637~5084517623" />' "$MANIFEST"
-          grep -q 'ca-app-pub-6567537003608637~5084517623' "$MANIFEST"
+          python -c 'from pathlib import Path; p=Path("android/app/src/main/AndroidManifest.xml"); s=p.read_text(); k="com.google.android.gms.ads.APPLICATION_ID"; s="\n".join(x for x in s.splitlines() if k not in x)+"\n"; i=s.find("<application"); j=s.find(">",i); assert i >= 0 and j >= 0, "Application tag missing"; s=s[:j+1]+"\n        <meta-data android:name=\\""+k+"\\" android:value=\\"ca-app-pub-6567537003608637~5084517623\\" />"+s[j+1:]; p.write_text(s); print("AdMob App ID inserted")'
       - name: Build debug APK
         working-directory: android
         run: |
