@@ -1,3 +1,4 @@
+import { Browser } from '@capacitor/browser';
 import React, { useEffect, useRef, useState } from 'react';
 import { bestMoves, computerMove, getWinner } from './ai';
 import {
@@ -5,6 +6,7 @@ import {
 } from './ads';
 import { INTERSTITIAL_EVERY } from './adsConfig';
 
+const ADSTERRA_LINK = 'https://asiafilm.org/4/810c03ed4b0e90ee1c6da46bdeadf4ab';
 const EMPTY = () => Array(9).fill(null);
 
 function load(key, fallback) {
@@ -92,6 +94,15 @@ export default function App() {
       setAdBusy(false);
     }
     startRound();
+  }
+
+  async function openSponsoredLink() {
+    try {
+      await Browser.open({ url: ADSTERRA_LINK });
+    } catch (error) {
+      console.error('[Adsterra] Open failed:', error);
+      setToast('Unable to open sponsored link');
+    }
   }
 
   function resetAll() {
@@ -191,6 +202,10 @@ export default function App() {
             Hint <small>· watch a short ad</small>
           </button>
         </div>
+
+        <button className="btn sponsored-link" onClick={openSponsoredLink}>
+          Sponsored · Visit Advertiser
+        </button>
       </main>
 
       {toast && <div className="toast" role="status">{toast}</div>}

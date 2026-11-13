@@ -205,3 +205,12 @@ h1 { margin: 0; font-size: 1.9rem; letter-spacing: 1px; text-align: center; }
   h1 { font-size: 1.4rem; }
   .stage { gap: 8px; }
 }
+
+.sponsored-link {
+  width: 100%;
+  margin-top: 10px;
+  background: #202b24;
+  color: #a8efbd;
+  border: 1px solid #426b4d;
+  font-size: 0.9rem;
+}
